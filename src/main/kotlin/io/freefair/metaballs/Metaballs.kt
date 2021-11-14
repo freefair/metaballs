@@ -9,7 +9,6 @@ import org.lwjgl.opengl.GL32.GL_PROGRAM_POINT_SIZE
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.system.MemoryUtil.NULL
 import kotlin.math.pow
-import kotlin.math.sqrt
 
 
 class Metaballs {
@@ -86,9 +85,9 @@ class Metaballs {
     private fun loop() {
         GL.createCapabilities()
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f)
+        glScalef(1f/scaling,1f/scaling,1f/scaling)
         while (!glfwWindowShouldClose(window)) {
             glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-
             draw()
 
             animate()
@@ -98,35 +97,41 @@ class Metaballs {
         }
     }
 
-    private fun metaballFunction(xPos: Float, yPos: Float, xPoint: Float, yPoint: Float, size:Float): Float {
-        return size/sqrt((xPoint - xPos).pow(2)+(yPoint - yPos).pow(2))
+    private fun metaballFunction(xPos: Float, yPos: Float, xPoint: Float, yPoint: Float, size: Float): Float? {
+        val dist = (xPoint - xPos).pow(2) + (yPoint - yPos).pow(2)
+        if (dist > 1f || dist < -1f) return null
+        return (1 - dist).pow(2)
     }
 
+    val size = 1f
     val metaBalls: Array<Metaball> = arrayOf(
-        Metaball(0.25f, 0.25f, 0.17f, 0.25f, 0.20f),
-        Metaball(-0.25f, -0.25f, 0.17f, 0.15f, -0.25f),
-        Metaball(0.25f, -0.25f, 0.17f, -0.25f, 0.15f),
-        Metaball(-0.25f, 0.25f, 0.17f, -0.20f, -0.25f)
+        Metaball(0.25f, 0.25f, size, 0.27f, 0.20f),
+        Metaball(-0.25f, -0.25f, size, 0.12f, -0.21f),
+        Metaball(0.25f, -0.25f, size, -0.19f, 0.13f),
+        Metaball(-0.25f, 0.25f, size, -0.21f, -0.27f)
     )
 
-    var lastRender = System.currentTimeMillis()
+    private val renderSize = 100
+    private val scaling = 3.5f
+    private val threshold: Float = 0.25f
 
+    private var lastRender = System.currentTimeMillis()
     private fun animate() {
         val now = System.currentTimeMillis()
-        val diffInSecs = (now - lastRender) / 1000f
+        val diffInSecs = (now - lastRender) / 1000f * scaling
         for (ball in metaBalls) {
             ball.x += ball.xForce * diffInSecs
             ball.y += ball.yForce * diffInSecs
 
-            if(ball.x >= 1.0) {
+            if(ball.x >= scaling) {
                 ball.xForce = -ball.xForce
-            } else if (ball.x <= -1.0) {
+            } else if (ball.x <= -scaling) {
                 ball.xForce = -ball.xForce
             }
 
-            if(ball.y >= 1.0) {
+            if(ball.y >= scaling) {
                 ball.yForce = -ball.yForce
-            } else if (ball.y <= -1.0) {
+            } else if (ball.y <= -scaling) {
                 ball.yForce = -ball.yForce
             }
         }
@@ -138,16 +143,20 @@ class Metaballs {
         glPointSize(5f)
         glColor3f(0.0f, 1.0f, 0.0f)
         glBegin(GL_POINTS)
-        val renderSize = 300
-        for(i in -renderSize..renderSize) {
+        val loopSize = (renderSize * scaling).toInt()
+        for(i in -loopSize..loopSize) {
             val xP = i / renderSize.toFloat()
-            for(j in -renderSize..renderSize) {
+            for(j in -loopSize..loopSize) {
                 val yP = j / renderSize.toFloat()
                 var sum = 0f
                 for(ball in metaBalls) {
-                    sum += metaballFunction(ball.x, ball.y, xP, yP, ball.size)
+                    val metaballFunction = metaballFunction(ball.x, ball.y, xP, yP, ball.size) ?: continue
+                    sum += metaballFunction
+                    if(metaballFunction > threshold) {
+                        glVertex2f(xP, yP)
+                    }
                 }
-                if(sum > 1.0) {
+                if(sum > threshold) {
                     glVertex2f(xP, yP)
                 }
             }
