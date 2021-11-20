@@ -1,5 +1,6 @@
 plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.5.31'
+    id 'application'
 }
 
 group 'io.freefair.metaballs'
@@ -7,6 +8,11 @@ version '1.0-SNAPSHOT'
 
 project.ext.lwjglVersion = "3.2.3"
 project.ext.lwjglNatives = "natives-macos"
+
+application {
+    mainClass = 'io.freefair.metaballs.MainKt'
+    applicationDefaultJvmArgs = ['-XstartOnFirstThread']
+}
 
 repositories {
     mavenCentral()
